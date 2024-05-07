@@ -1,11 +1,12 @@
 package internals
 
 import (
-	"encoding/json"
+	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"rasyncan/types"
 )
 
 const (
@@ -14,7 +15,7 @@ const (
 	TYPE = "tcp"
 )
 
-func Lreceiver(c, c2 chan bool, c3 chan int64) {
+func Lreceiver(pipe types.Pipe) {
 	listen, err := net.Listen(TYPE, HOST+":"+PORT)
 	if err != nil {
 		log.Fatal(err)
@@ -26,33 +27,38 @@ func Lreceiver(c, c2 chan bool, c3 chan int64) {
 	// close listener
 	defer listen.Close()
 
-	c <- true
+	pipe.C1 <- true
 	for {
 		conn, err := listen.Accept()
 		if err != nil {
 			log.Fatal(err)
 			os.Exit(1)
 		}
-		go handleRequest(conn, c2, c3)
+		go handleRequest(conn, pipe)
 	}
 }
 
-func handleRequest(conn net.Conn, c2 chan bool, c3 chan int64) {
+func handleRequest(conn net.Conn, pipe types.Pipe) {
 	// incoming request
-	val := <-c3
-	fmt.Println("handling connection", val)
-	buffer := make([]byte, val)
-	conn.Read(buffer)
 	var fileList FileList
-	fmt.Println(buffer)	
-	if err := json.Unmarshal(buffer, &fileList); err != nil {
+	d := gob.NewDecoder(conn)
+
+	if err := d.Decode(&fileList); err != nil {
         	log.Fatal(err)
     	}
-
-	fmt.Println("This is the file list", len(fileList))
-
-	// write data to response
-	c2 <- true
-	// close afterb the sybc has been completed conn
+	//verify what files to sync
+	verifyFilesToSync(fileList, pipe)
+	pipe.C2 <- true
 	conn.Close()
+}
+
+func verifyFilesToSync(fl FileList, pipe types.Pipe){
+	for _, f := range fl{
+		fmt.Println(f.Path)
+	}
+	//generate checksum for both files 
+	//check if the checksums are the same
+	//if checksum for the file mathches 
+	//skip else sync
+	return
 }

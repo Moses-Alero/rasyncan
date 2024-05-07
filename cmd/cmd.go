@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"rasyncan/internals"
+	"rasyncan/types"
 
 	"github.com/spf13/cobra"
 )
@@ -20,16 +21,20 @@ var FileSync = &cobra.Command{
 	Long: "flesh this stuff out a bit more",
 	Run: func(cmd *cobra.Command, args []string){
 		fmt.Println("File sync has startted")
-		c := make(chan bool)
-		c2 := make(chan bool)	
-		c3 := make(chan int64)
-		go internals.Lreceiver(c, c2, c3)
-		
-		if <-c {
-			go internals.Lsender(args[0], c3)
+		pipe := types.Pipe{
+			C1: make(chan bool),
+			C2: make(chan bool),
+			SDir: args[0],
+			RDir: args[1],
 		}
+		go internals.Lreceiver(pipe)
+		
+		if <-pipe.C1 {
+			go internals.Lsender(pipe)
+		}
+		//keep main routine running until receiver go routine is completed
 		for {
-			if <-c2 {
+			if <-pipe.C2 {
 				break
 			}
 		}

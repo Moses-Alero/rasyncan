@@ -15,11 +15,11 @@ import (
 
 
 type FileMetadata struct{
-	path  string
-	size  int64
-	perm  os.FileMode
-	mTime time.Time
-	checksum string
+	Path  string
+	Size  int64
+	Perm  os.FileMode
+	MTime time.Time
+	Checksum *string
 }
 
 type FileList []FileMetadata
@@ -48,16 +48,16 @@ func extractMetadata(fpath string) FileMetadata{
 		log.Fatal(err)
 	}
 	metadata := FileMetadata{
-		path: fpath,
-		size: fInfo.Size(),
-		perm: fInfo.Mode().Perm(),
-		mTime: fInfo.ModTime(),
-		checksum: generateFileHash(fpath),
+		Path: fpath,
+		Size: fInfo.Size(),
+		Perm: fInfo.Mode().Perm(),
+		MTime: fInfo.ModTime(),
+		Checksum: nil, //GenerateFileHash(fpath),
 	}
 	return metadata
 }
  
-func generateFileHash(file string) string{
+func GenerateFileHash(file string) string{
 	f, err := os.Open(file)
 	defer f.Close()
 	if err != nil {

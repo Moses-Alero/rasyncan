@@ -1,16 +1,16 @@
 package internals
 
 import (
-	"encoding/json"
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
+	"rasyncan/types"
 )
 
 
-func Lsender(dir string, c3 chan int64) {
-//	tcpServer, err := net.ResolveTCPAddr(TYPE, HOST+":"+PORT)
-	
+func Lsender(pipe types.Pipe) {
 	conn, err := net.Dial(TYPE, HOST+":"+PORT)
 
 	fmt.Println("Connecting to servers")
@@ -18,14 +18,16 @@ func Lsender(dir string, c3 chan int64) {
 		log.Fatal(err)
 	}
 
-	fileList := GenerateFileList(dir)		
-
-	buffer, _ := json.Marshal(fileList)
-
-	fmt.Println("data to be sent", len(buffer))
-	c3 <- int64(len(buffer))
-	conn.Write(buffer)
+	fileList := GenerateFileList(pipe.SDir)		
 	
+	buf := new(bytes.Buffer)
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(fileList); err != nil{
+		log.Fatal(err)
+	}
+
+	fmt.Println("data to be sent", len(buf.Bytes()))
+	conn.Write(buf.Bytes())
 
 	fmt.Println("Connected and file list sent")
 	conn.Close()
