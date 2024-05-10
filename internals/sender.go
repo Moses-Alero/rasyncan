@@ -9,27 +9,37 @@ import (
 	"rasyncan/types"
 )
 
+func Lsender(pipe types.Pipe, fList types.FileList){
 
-func Lsender(pipe types.Pipe) {
+	for _, file:= range fList{
+		pipe.RFileChan <- file
+	}
+	close(pipe.RFileChan)
+}
+
+func sender(pipe types.Pipe) {
 	conn, err := net.Dial(TYPE, HOST+":"+PORT)
 
 	fmt.Println("Connecting to servers")
 	if err != nil {
 		log.Fatal(err)
 	}
+		
+	var fileList  = make(types.FileList, 0)
 
-	fileList := GenerateFileList(pipe.SDir)		
-	
-	buf := new(bytes.Buffer)
-	enc := gob.NewEncoder(buf)
-	if err := enc.Encode(fileList); err != nil{
-		log.Fatal(err)
+	for file := range pipe.SFileChan { 
+		fileList = append(fileList, file)
+		buf := new(bytes.Buffer)
+		enc := gob.NewEncoder(buf)
+		if err := enc.Encode(file); err != nil{
+			log.Fatal(err)
+		}
+		fmt.Println("data to be sent", len(buf.Bytes()))
+		conn.Write(buf.Bytes())
+		conn.Read(make([]byte, 1024))
+		conn.Close()
+
 	}
-
-	fmt.Println("data to be sent", len(buf.Bytes()))
-	conn.Write(buf.Bytes())
-
 	fmt.Println("Connected and file list sent")
-	conn.Close()
-
+	
 }

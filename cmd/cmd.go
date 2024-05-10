@@ -24,14 +24,15 @@ var FileSync = &cobra.Command{
 		pipe := types.Pipe{
 			C1: make(chan bool),
 			C2: make(chan bool),
+			RFileChan: make(chan types.FileMetadata),
+			SFileChan: make(chan types.FileMetadata),
 			SDir: args[0],
 			RDir: args[1],
 		}
+		fileList :=  internals.GenerateFileList(pipe.SDir)		
+		go internals.Lsender(pipe, fileList)
 		go internals.Lreceiver(pipe)
 		
-		if <-pipe.C1 {
-			go internals.Lsender(pipe)
-		}
 		//keep main routine running until receiver go routine is completed
 		for {
 			if <-pipe.C2 {

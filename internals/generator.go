@@ -1,38 +1,26 @@
 package internals
 
 import (
-	"crypto/md5"
 	"errors"
 	"fmt"
+	"hash/adler32"
 	"io"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
-	"time"
+	"rasyncan/types"
 )
 
+var fileList = make(types.FileList, 0)
 
-
-type FileMetadata struct{
-	Path  string
-	Size  int64
-	Perm  os.FileMode
-	MTime time.Time
-	Checksum *string
-}
-
-type FileList []FileMetadata
-
-var fileList FileList = make(FileList, 0)
-
-func GenerateFileList(dirPath string) FileList{
-	files, err := os.ReadDir(dirPath)
+func GenerateFileList(dir string) types.FileList{
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		log.Fatal(err)
 	}
 	for _, file := range files{
-		fPath := filepath.Join(dirPath, file.Name())
+		fPath := filepath.Join(dir, file.Name())
 		if file.IsDir(){
 			GenerateFileList(fPath)
 		}else{
@@ -42,17 +30,17 @@ func GenerateFileList(dirPath string) FileList{
 	return fileList
 }
 
-func extractMetadata(fpath string) FileMetadata{
+func extractMetadata(fpath string) types.FileMetadata{
 	fInfo, err := os.Stat(fpath)
 	if err != nil{
 		log.Fatal(err)
 	}
-	metadata := FileMetadata{
+	metadata := types.FileMetadata{
 		Path: fpath,
 		Size: fInfo.Size(),
 		Perm: fInfo.Mode().Perm(),
 		MTime: fInfo.ModTime(),
-		Checksum: nil, //GenerateFileHash(fpath),
+		Checksum: GenerateFileHash(fpath),
 	}
 	return metadata
 }
@@ -66,7 +54,8 @@ func GenerateFileHash(file string) string{
 		}
 		log.Fatal(err)
 	}
-	h := md5.New()
+	
+	h := adler32.New()
 	if _, err := io.Copy(h, f); err != nil {
 		log.Fatal(err)
 	}

@@ -15,7 +15,17 @@ const (
 	TYPE = "tcp"
 )
 
-func Lreceiver(pipe types.Pipe) {
+func Lreceiver(pipe types.Pipe){
+	//var fileList = make(types.FileList, 0)
+	for file := range pipe.RFileChan {
+		fmt.Println(file)
+		//fileList = append(fileList, file)
+		//verifyFilesToSync(file.Path)
+	}
+	pipe.C2 <- true
+}
+
+func receiver(pipe types.Pipe) {
 	listen, err := net.Listen(TYPE, HOST+":"+PORT)
 	if err != nil {
 		log.Fatal(err)
@@ -40,22 +50,22 @@ func Lreceiver(pipe types.Pipe) {
 
 func handleRequest(conn net.Conn, pipe types.Pipe) {
 	// incoming request
-	var fileList FileList
+	var fmetadata types.FileMetadata
 	d := gob.NewDecoder(conn)
 
-	if err := d.Decode(&fileList); err != nil {
+	if err := d.Decode(&fmetadata); err != nil {
         	log.Fatal(err)
     	}
 	//verify what files to sync
-	verifyFilesToSync(fileList, pipe)
+	fileList = append(fileList, fmetadata)
+	//verifyFilesToSync(fmetadata, pipe)
 	pipe.C2 <- true
+	conn.Write([]byte(""))
 	conn.Close()
 }
 
-func verifyFilesToSync(fl FileList, pipe types.Pipe){
-	for _, f := range fl{
-		fmt.Println(f.Path)
-	}
+func verifyFilesToSync(f types.FileMetadata){
+	fmt.Println(f.Path)
 	//generate checksum for both files 
 	//check if the checksums are the same
 	//if checksum for the file mathches 
