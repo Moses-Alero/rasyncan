@@ -29,17 +29,20 @@ var FileSync = &cobra.Command{
 			SDir: args[0],
 			RDir: args[1],
 		}
+		//validate the directories exist locally
+		//the sender directory must exist 
+		//the receiver directory may be optional and created if it does not exist 
+		//user must specify if they for the file to exist
 		fileList :=  internals.GenerateFileList(pipe.SDir)		
 		go internals.Lsender(pipe, fileList)
 		go internals.Lreceiver(pipe)
-		
+			
 		//keep main routine running until receiver go routine is completed
 		for {
 			if <-pipe.C2 {
 				break
 			}
 		}
-	
 	},
 }
 
