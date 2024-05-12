@@ -29,29 +29,44 @@ func Lreceiver(pipe types.Pipe){
 		if err != nil{
 			if errors.Is(err, os.ErrNotExist) {
 				fmt.Println("file does not exist")
-				f, err := os.Create(rPath)
-				defer f.Close()
-				if err != nil{
-					fmt.Println(err)
-					continue
-				}
-				if err := os.WriteFile(rPath, []byte("rsync dunmmy file"), 0666); err != nil{
-					fmt.Println(err)
-					continue
-				}
+				setupFileDir(pipe.RDir, f[1])
 				fmt.Println("File created successfully")
 			}else{
 				continue
 			}
 		}
 		LSync(file.Path, rPath)
-		//receive the fijle diff if there's any
-		//apply the delta
-		
-		//fileList = append(fileList, file)
-		//verifyFilesToSync(file.Path)
 	}
 	pipe.C2 <- true
+	close(pipe.C2)
+}
+
+//this is not a very descriptive name for this function
+//this func creates the directory if it does not exist and also creates the file 
+//if the directory exists
+func setupFileDir(root, path string){
+	file, err := os.Create(filepath.Join(root,path))	
+	defer file.Close()
+	if err != nil{
+		if errors.Is(err, os.ErrNotExist){
+			folderList := strings.Split(path, "/")
+			fmt.Println(folderList)
+			f := ""
+			for _, folder := range folderList[:len(folderList) - 1]{
+				f = filepath.Join(f, folder)			
+			}
+			fmt.Println("this is a directory >>>",filepath.Join(root, f))
+			if err := os.MkdirAll(filepath.Join(root, f), 0750); err != nil{
+				fmt.Println(err)
+				return
+			}
+			if err = os.WriteFile(filepath.Join(root, path), []byte("Dummy rasyncan data"), 0660); err != nil{
+				fmt.Println(err)
+				return
+			}
+		}
+	}
+	return
 }
 
 func LSync(srcPath string, destPath string){
@@ -78,7 +93,6 @@ func LSync(srcPath string, destPath string){
 		return
 	}
 
-
 	rs.CreateSignature(targetReader, writeSignature)
 
 	opsOut := make(chan rsync.Operation)
@@ -86,7 +100,6 @@ func LSync(srcPath string, destPath string){
 		opsOut <- op
 		return nil
 	}
-
 
 	go func() {
 		defer close(opsOut)
@@ -102,7 +115,6 @@ func LSync(srcPath string, destPath string){
 	srcReader.Seek(0, io.SeekStart)
 
 	rs.ApplyDelta(srcWriter, targetReader, opsOut)
-
 }
 
 func receiver(pipe types.Pipe) {
