@@ -21,6 +21,12 @@ var FileSync = &cobra.Command{
 	Long: "flesh this stuff out a bit more",
 	Run: func(cmd *cobra.Command, args []string){
 		fmt.Println("File sync has startted")
+		if len(args) < 2{
+			log.Fatal("Please input the directories you want to sync")
+		}
+		validateDir(args[0])
+		validateDir(args[1])
+
 		pipe := types.Pipe{
 			C1: make(chan bool),
 			C2: make(chan bool),
@@ -44,6 +50,17 @@ var FileSync = &cobra.Command{
 			}
 		}
 	},
+}
+
+func validateDir(path string){
+		file, err := os.Stat(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if !file.IsDir(){
+			log.Fatalf("%s is not a directory", path)
+		}
+		return
 }
 
 func compareDir(dirs ...string){
