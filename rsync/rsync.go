@@ -218,7 +218,6 @@ func (r *RSync) CreateDelta(source io.Reader, signature []BlockHash, ops Operati
 		tail int
 		head int
 	}
-	
 
 	var data, sum section
 	var n, validTo int

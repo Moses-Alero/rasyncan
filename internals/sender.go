@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"rasyncan/types"
+	"rasyncan/x/types"
 )
 
 func Lsender(pipe types.Pipe, fList types.FileList){
