@@ -27,11 +27,6 @@ func Execute(ctx context.Context, config SyncConfig, out io.Writer) error {
 	//simple for loop running on a different thread
 	// this is the daemon process
 	go func() {
-	LOOP:
-
-		for {
-			break LOOP
-		}
 
 	}()
 

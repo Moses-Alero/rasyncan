@@ -1,12 +1,9 @@
 package internals
 
 import (
-	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
-	"log"
-	"net"
 	"os"
 	"path/filepath"
 	"rasyncan/rsync"
@@ -15,34 +12,33 @@ import (
 	"strings"
 )
 
-const (
-	HOST = "localhost"
-	PORT = "8732"
-	TYPE = "tcp"
-)
-
 func Lreceiver(pipe types.Pipe) {
-	//var fileList = make(types.FileList, 0)
 	for file := range pipe.RFileChan {
 		f := strings.Split(file.Path, pipe.SDir)
 		rPath := filepath.Join(pipe.RDir, f[1])
 		_, err := os.Stat(rPath)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				//fmt.Println("file does not exist")
-				setupFileDir(pipe.RDir, f[1], file.Size)
-				//fmt.Println("File created successfully")
+				setupFileDir(pipe.RDir, f[1])
 			} else {
 				continue
 			}
 		}
 		rFile := utils.ExtractMetadata(rPath)
 		if verifyFilesToSync(file, rFile) {
-			LSync(file.Path, rPath)
+			sync(file.Path, rPath)
 		}
 	}
 	pipe.C2 <- true
 	close(pipe.C2)
+}
+
+func Lsender(pipe types.Pipe, fList types.FileList) {
+
+	for _, file := range fList {
+		pipe.RFileChan <- file
+	}
+	close(pipe.RFileChan)
 }
 
 func verifyFilesToSync(f1, f2 types.FileMetadata) bool {
@@ -64,7 +60,7 @@ func verifyFilesToSync(f1, f2 types.FileMetadata) bool {
 // this is not a very descriptive name for this function
 // this func creates the directory if it does not exist and also creates the file
 // if the directory exists
-func setupFileDir(root, path string, fileSize int64) {
+func setupFileDir(root, path string) {
 	file, err := os.Create(filepath.Join(root, path))
 	defer file.Close()
 	if err != nil {
@@ -89,13 +85,13 @@ func setupFileDir(root, path string, fileSize int64) {
 	return
 }
 
-func LSync(srcPath string, destPath string) {
+func sync(srcPath string, destPath string) {
 	srcReader, err := os.Open(srcPath)
+	defer srcReader.Close()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	defer srcReader.Close()
 
 	rs := &rsync.RSync{}
 
@@ -127,6 +123,7 @@ func LSync(srcPath string, destPath string) {
 	}()
 
 	srcWriter, err := os.OpenFile(destPath, os.O_RDWR, 0644)
+	defer srcWriter.Close()
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -135,43 +132,4 @@ func LSync(srcPath string, destPath string) {
 	srcReader.Seek(0, io.SeekStart)
 
 	rs.ApplyDelta(srcWriter, targetReader, opsOut)
-}
-
-func receiver(pipe types.Pipe) {
-	listen, err := net.Listen(TYPE, HOST+":"+PORT)
-	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
-
-	fmt.Println("Starting the server")
-
-	// close listener
-	defer listen.Close()
-
-	pipe.C1 <- true
-	for {
-		conn, err := listen.Accept()
-		if err != nil {
-			log.Fatal(err)
-			os.Exit(1)
-		}
-		go handleRequest(conn, pipe)
-	}
-}
-
-func handleRequest(conn net.Conn, pipe types.Pipe) {
-	// incoming request
-	var fmetadata types.FileMetadata
-	d := gob.NewDecoder(conn)
-
-	if err := d.Decode(&fmetadata); err != nil {
-		log.Fatal(err)
-	}
-	//verify what files to sync
-	fileList = append(fileList, fmetadata)
-	//verifyFilesToSync(fmetadata, pipe)
-	pipe.C2 <- true
-	conn.Write([]byte(""))
-	conn.Close()
 }
