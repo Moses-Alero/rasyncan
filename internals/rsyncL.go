@@ -13,7 +13,7 @@ import (
 )
 
 func Lreceiver(pipe types.Pipe) {
-	for file := range pipe.RFileChan {
+	for file := range pipe.FileChan {
 		f := strings.Split(file.Path, pipe.SDir)
 		rPath := filepath.Join(pipe.RDir, f[1])
 		_, err := os.Stat(rPath)
@@ -29,16 +29,15 @@ func Lreceiver(pipe types.Pipe) {
 			sync(file.Path, rPath)
 		}
 	}
-	pipe.C2 <- true
-	close(pipe.C2)
+	close(pipe.Exit)
 }
 
 func Lsender(pipe types.Pipe, fList types.FileList) {
 
 	for _, file := range fList {
-		pipe.RFileChan <- file
+		pipe.FileChan <- file
 	}
-	close(pipe.RFileChan)
+	close(pipe.FileChan)
 }
 
 func verifyFilesToSync(f1, f2 types.FileMetadata) bool {

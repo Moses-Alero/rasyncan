@@ -23,23 +23,23 @@ var FileSync = &cobra.Command{
 		validateDir(args[1])
 
 		pipe := types.Pipe{
-			C1:        make(chan bool),
-			C2:        make(chan bool),
-			RFileChan: make(chan types.FileMetadata),
-			SFileChan: make(chan types.FileMetadata),
-			SDir:      args[0],
-			RDir:      args[1],
+			Exit: make(chan bool),
+			SDir: args[0],
+			RDir: args[1],
 		}
 		//validate the directories exist locally
 		//the sender directory must exist
 		//the receiver directory may be optional and created if it does not exist
 		//user must specify if they for the file to exist
+
 		fileList := internals.GenerateFileList(pipe.SDir)
+		pipe.FileChan = make(chan types.FileMetadata, len(fileList))
+
 		go internals.Lsender(pipe, fileList)
 		go internals.Lreceiver(pipe)
 
 		//keep main routine running until receiver go routine is completed
-		<-pipe.C2
+		<-pipe.Exit
 	},
 }
 
